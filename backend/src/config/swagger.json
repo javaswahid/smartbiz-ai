@@ -1,0 +1,204 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SmartBiz AI SaaS API Documentation",
+    "version": "1.0.0",
+    "description": "Dokumentasi REST API terintegrasi untuk platform SmartBiz AI UMKM SaaS. Dilengkapi dengan otentikasi JWT, multi-tenancy, manajemen produk, CRM loyalty, POS, dan fitur AI."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Development Server"
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Mendaftarkan Bisnis Baru & Pemilik (Tenant & Owner)",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "password", "businessName", "businessCategory", "businessScale"],
+                "properties": {
+                  "name": { "type": "string", "example": "Budi Santoso" },
+                  "email": { "type": "string", "example": "budi@tokosejahtera.com" },
+                  "password": { "type": "string", "example": "Password123" },
+                  "businessName": { "type": "string", "example": "Toko Sejahtera Mart" },
+                  "businessCategory": { "type": "string", "example": "Retail" },
+                  "businessScale": { "type": "string", "enum": ["Mikro", "Kecil", "Menengah"], "example": "Mikro" },
+                  "address": { "type": "string", "example": "Jl. Pemuda No. 12, Surabaya" },
+                  "phone": { "type": "string", "example": "081234567890" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Berhasil terdaftar",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "token": { "type": "string", "example": "eyJhbGciOi..." },
+                    "user": { "type": "object" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Autentikasi User Login",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "owner@tokosejahtera.com" },
+                  "password": { "type": "string", "example": "Password123" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login berhasil",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "token": { "type": "string", "example": "eyJhbGciOi..." }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "summary": "Mengambil Seluruh Produk Toko",
+        "tags": ["Products"],
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Daftar produk dimuat" }
+        }
+      },
+      "post": {
+        "summary": "Menambahkan Produk Baru",
+        "tags": ["Products"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "sku", "category", "price", "cost", "stock"],
+                "properties": {
+                  "name": { "type": "string", "example": "Kopi Macchiato" },
+                  "sku": { "type": "string", "example": "KP-MC-05" },
+                  "category": { "type": "string", "example": "Minuman" },
+                  "price": { "type": "number", "example": 25000 },
+                  "cost": { "type": "number", "example": 12000 },
+                  "stock": { "type": "integer", "example": 20 },
+                  "minStockThreshold": { "type": "integer", "example": 5 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Produk berhasil ditambahkan" }
+        }
+      }
+    },
+    "/transactions": {
+      "post": {
+        "summary": "Memproses Pembayaran POS Kasir",
+        "tags": ["Transactions"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["items"],
+                "properties": {
+                  "customerId": { "type": "string", "example": "cust-uuid-here" },
+                  "discount": { "type": "number", "example": 5000 },
+                  "taxPercent": { "type": "number", "example": 10 },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "productId": { "type": "string", "example": "prod-uuid-here" },
+                        "quantity": { "type": "integer", "example": 2 }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Transaksi diselesaikan" }
+        }
+      }
+    },
+    "/ai/chat": {
+      "post": {
+        "summary": "Tanya AI Asisten Bisnis (RAG)",
+        "tags": ["AI Modules"],
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["message"],
+                "properties": {
+                  "message": { "type": "string", "example": "Kopi aren kita sisa berapa stoknya?" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Jawaban chatbot diproses" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

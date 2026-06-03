@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database Service
+  db:
+    image: postgres:15-alpine
+    container_name: smartbiz-db-container
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: smartbiz_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # 2. Express Backend API Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    container_name: smartbiz-backend-container
+    restart: always
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://postgres:postgrespassword@db:5432/smartbiz_ai?schema=public"
+      JWT_SECRET: "JWT_SECRET_STRING_PRODUCTION_992211"
+      JWT_EXPIRES_IN: "2h"
+      OPENAI_API_KEY: "sk-proj-mock-key"
+      WHATSAPP_API_TOKEN: "mock-token"
+      WHATSAPP_SENDER_NUMBER: "08123456789"
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+
+  # 3. Next.js Frontend Client Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    container_name: smartbiz-frontend-container
+    restart: always
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:5000/api/v1"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "NEXTAUTH_SECRET_STRING_PRODUCTION_8833"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+    driver: local

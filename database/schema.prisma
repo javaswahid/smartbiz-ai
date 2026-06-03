@@ -1,0 +1,152 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Multi-Tenant Context
+model Tenant {
+  id                  String          @id @default(uuid())
+  name                String
+  category            String
+  scale               String          // Mikro, Kecil, Menengah
+  address             String?
+  phone               String?
+  email               String?
+  whatsappApiKey      String?
+  stockAlertThreshold Int             @default(10)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  
+  users               User[]
+  products            Product[]
+  customers           Customer[]
+  transactions        Transaction[]
+  auditLogs           AuditLog[]
+  knowledgeBases      KnowledgeBase[]
+}
+
+// User & Role-Based Access Control (RBAC)
+model User {
+  id           String        @id @default(uuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         String        @default("STAFF") // OWNER, ADMIN, STAFF
+  tenantId     String
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+}
+
+// Product Inventory System
+model Product {
+  id                String            @id @default(uuid())
+  name              String
+  sku               String
+  category          String
+  price             Decimal           @db.Decimal(12, 2)
+  cost              Decimal           @db.Decimal(12, 2)
+  stock             Int               @default(0)
+  minStockThreshold Int               @default(5)
+  imageUrl          String?
+  tenantId          String
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  transactionItems  TransactionItem[]
+
+  @@unique([tenantId, sku])
+}
+
+// Customer CRM
+model Customer {
+  id        String            @id @default(uuid())
+  name      String
+  phone     String?
+  email     String?
+  tenantId  String
+  tenant    Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  
+  transactions Transaction[]
+  loyalty      CustomerLoyalty?
+}
+
+// CRM Customer Loyalty Points
+model CustomerLoyalty {
+  id         String   @id @default(uuid())
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  points     Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+// POS Sales Transactions
+model Transaction {
+  id            String            @id @default(uuid())
+  invoiceNumber String            @unique
+  totalAmount   Decimal           @db.Decimal(12, 2)
+  tax           Decimal           @db.Decimal(12, 2) @default(0)
+  discount      Decimal           @db.Decimal(12, 2) @default(0)
+  netAmount     Decimal           @db.Decimal(12, 2)
+  status        String            @default("COMPLETED") // COMPLETED, PENDING, CANCELLED
+  customerId    String?
+  customer      Customer?         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  userId        String
+  user          User              @relation(fields: [userId], references: [id])
+  tenantId      String
+  tenant        Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  
+  items         TransactionItem[]
+}
+
+// Transaction Sales Details
+model TransactionItem {
+  id            String      @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id])
+  quantity      Int
+  unitPrice     Decimal     @db.Decimal(12, 2)
+  subTotal      Decimal     @db.Decimal(12, 2)
+}
+
+// Audit Logs for Important User Activities
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String   // PRODUCT_CREATE, SALE_CREATE, USER_LOGIN, etc.
+  details   String
+  ipAddress String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+// AI Knowledge Base (RAG)
+model KnowledgeBase {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  
+  // Note: pgvector embeddings are queried via raw SQL query mapping, 
+  // so we can store them as Unsupported("vector(1536)") or as a JSON string fallback in sqlite/other DBs.
+  // We use Unsupported("vector(1536)")? for actual PostgreSQL deployment.
+  embedding Unsupported("vector(1536)")?
+}
