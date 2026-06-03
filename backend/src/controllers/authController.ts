@@ -84,7 +84,7 @@ export class AuthController {
       const token = jwt.sign(
         { id: result.owner.id, name: result.owner.name, role: result.owner.role, tenantId: result.tenant.id },
         JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { expiresIn: JWT_EXPIRES_IN as any }
       );
 
       // Audit Log
@@ -139,7 +139,7 @@ export class AuthController {
       const token = jwt.sign(
         { id: user.id, name: user.name, role: user.role, tenantId: user.tenantId },
         JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
+        { expiresIn: JWT_EXPIRES_IN as any }
       );
 
       // Log login activity
